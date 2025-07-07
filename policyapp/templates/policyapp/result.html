@@ -1,0 +1,134 @@
+{% extends "policyapp/base.html" %}
+{% block title %}Analyze Policy{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Upload Policy PDF</h2>
+
+<!-- Upload Form -->
+<form id="uploadForm" enctype="multipart/form-data" class="card p-4 shadow-sm">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label">Drag & Drop a PDF or Click to Browse</label>
+        <div id="dropzone" class="border border-primary rounded p-5 text-center bg-body-tertiary" style="cursor:pointer;">
+            <p class="mb-0">📁 Drop your PDF here or click to upload</p>
+            <input type="file" name="pdf_file" id="fileInput" class="form-control d-none" accept="application/pdf" required>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 mt-3">Analyze Policy</button>
+</form>
+
+<!-- Progress Bar -->
+<div id="progressWrapper" class="mt-4 d-none">
+    <label>Uploading...</label>
+    <div class="progress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"
+             style="width: 0%" id="progressBar">0%
+        </div>
+    </div>
+</div>
+
+<a href="{% url 'list_policies' %}" class="btn btn-outline-success mt-4">📄 View All Extracted Policies</a>
+
+{% if error %}
+    <div class="alert alert-danger mt-4">{{ error }}</div>
+{% endif %}
+
+{% if title %}
+    <hr class="my-5">
+    <h3 class="mb-3">📄 {{ title }}</h3>
+    <p><strong>Date Established:</strong> {{ date_established }}</p>
+
+    {% if pdf_url %}
+        <a href="{{ pdf_url }}" target="_blank" class="btn btn-secondary mt-2">📄 View Uploaded PDF</a>
+        <a href="{% url 'delete_policy' pk=record_id %}" class="btn btn-danger mt-2 ms-2">🗑️ Delete</a>
+    {% endif %}
+
+    <h4 class="mt-4">📝 Summary</h4>
+    <div class="bg-body-secondary p-3 rounded shadow-sm">
+        <p>{{ summary|linebreaks }}</p>
+    </div>
+
+    <h4 class="mt-4">📊 Impacted Sectors</h4>
+    <div class="list-group mb-4">
+        {% for sector in impacted_sectors %}
+            <div class="list-group-item">{{ sector }}</div>
+        {% endfor %}
+    </div>
+
+    <h5 class="mt-4">🔥 Most Impacted Sector</h5>
+    <div class="alert alert-warning">{{ most_impacted_sector }}</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const form = document.getElementById('uploadForm');
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressBar = document.getElementById('progressBar');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('bg-primary-subtle');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('bg-primary-subtle');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('bg-primary-subtle');
+
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === "application/pdf") {
+            fileInput.files = e.dataTransfer.files;
+        } else {
+            alert("Please upload a valid PDF file.");
+        }
+    });
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Please choose a PDF file first.");
+            return;
+        }
+
+        const formData = new FormData(form);
+        const xhr = new XMLHttpRequest();
+
+        progressWrapper.classList.remove("d-none");
+        progressBar.style.width = "0%";
+        progressBar.textContent = "0%";
+
+        xhr.upload.addEventListener("progress", function (e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = percent + "%";
+                progressBar.textContent = percent + "%";
+            }
+        });
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    window.location.href = xhr.responseURL;
+                } else {
+                    alert("Something went wrong while uploading. Try again.");
+                    progressWrapper.classList.add("d-none");
+                }
+            }
+        };
+
+        xhr.open("POST", "", true);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        xhr.send(formData);
+    });
+</script>
+{% endblock %}

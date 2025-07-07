@@ -1,0 +1,20 @@
+{% extends "policyapp/base.html" %}
+{% block title %}All Policies{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Extracted Policies</h2>
+
+{% for policy in policies %}
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">{{ policy.title }}</h5>
+            <p class="card-text"><strong>Date:</strong> {{ policy.date_established }}</p>
+            <a href="{% url 'view_policy' policy.pk %}" class="btn btn-sm btn-info">🔍 View</a>
+            <a href="{{ policy.pdf_file.url }}" target="_blank" class="btn btn-sm btn-secondary">📄 PDF</a>
+            <a href="{% url 'delete_policy' policy.pk %}" class="btn btn-sm btn-danger">🗑️ Delete</a>
+        </div>
+    </div>
+{% empty %}
+    <div class="alert alert-warning">No policies extracted yet.</div>
+{% endfor %}
+{% endblock %}
